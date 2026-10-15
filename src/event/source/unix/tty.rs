@@ -6,7 +6,7 @@ use signal_hook::low_level::pipe;
 
 use crate::event::Event;
 use crate::event::timeout::PollTimeout;
-use filedescriptor::{POLLIN, poll, pollfd};
+use filedescriptor::{POLLERR, POLLHUP, POLLIN, poll, pollfd};
 
 #[cfg(feature = "event-stream")]
 use crate::event::sys::Waker;
@@ -163,6 +163,12 @@ impl EventSource for UnixInternalEventSource {
                         None => break,
                     }
                 }
+            }
+            if fds[0].revents & (POLLERR | POLLHUP) != 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "input source closed",
+                ));
             }
             if fds[1].revents & POLLIN != 0 {
                 let fd = FileDesc::Borrowed(self.winch_signal_receiver.as_fd());
