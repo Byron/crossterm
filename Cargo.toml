@@ -32,6 +32,9 @@ bracketed-paste = []
 ## Enables reading input/events from the system using the [`event`] module.
 events = ["dep:mio", "dep:signal-hook", "dep:signal-hook-mio"]
 
+## Compatibility with 0.29 consumers; Windows dependencies are always enabled on Windows.
+windows = []
+
 #! ### Optional Features
 
 ## Enables documentation for crate features.
