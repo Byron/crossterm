@@ -76,7 +76,6 @@ rustix = { version = "1", default-features = false, features = ["pty", "process"
 [dev-dependencies]
 futures = "0.3"
 futures-timer = "3.0"
-rustix-openpty = "0.2"
 serde_json = "1.0"
 serial_test = "3.0.0"
 smol = "2.0"

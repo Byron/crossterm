@@ -243,12 +243,6 @@ mod tests {
         receiver.set_nonblocking(true).unwrap();
         drop(sender); // the fd is now permanently readable, with `read` returning 0
 
-        #[cfg(feature = "libc")]
-        let fd = {
-            use std::os::unix::io::IntoRawFd;
-            FileDesc::new(receiver.into_raw_fd(), true)
-        };
-        #[cfg(not(feature = "libc"))]
         let fd = FileDesc::Owned(receiver.into());
 
         let mut source = UnixInternalEventSource::from_file_descriptor(fd).unwrap();

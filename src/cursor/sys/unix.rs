@@ -41,8 +41,8 @@ fn read_position_raw() -> io::Result<(u16, u16)> {
     // Discard any buffered cursor-position replies from earlier `ESC[6n` requests so the
     // position returned below corresponds to the fresh request we are about to send.
     // Poll with a zero timeout to drain only already-available events without blocking.
-    while let Ok(true) = internal::poll(Some(Duration::ZERO), &CursorPositionFilter) {
-        let _ = internal::read(&CursorPositionFilter);
+    while internal::poll(Some(Duration::ZERO), &CursorPositionFilter)? {
+        internal::read(&CursorPositionFilter)?;
     }
 
     // Use `ESC [ 6 n` to and retrieve the cursor position.
@@ -58,7 +58,7 @@ fn read_position_raw() -> io::Result<(u16, u16)> {
 
 /// Waits for the terminal's reply to a cursor position request.
 ///
-/// Errors from `poll` are not retried: a dead tty makes `poll` fail immediately
+/// Errors from `poll` or `read` are not retried: a dead tty can fail immediately
 /// instead of waiting for its timeout, so retrying busy-loops forever.
 fn wait_for_position_response<P, R>(mut poll: P, mut read: R) -> io::Result<(u16, u16)>
 where
@@ -68,7 +68,7 @@ where
     loop {
         match poll(Some(Duration::from_millis(2000))) {
             Ok(true) => {
-                if let Ok(InternalEvent::CursorPosition(x, y)) = read() {
+                if let InternalEvent::CursorPosition(x, y) = read()? {
                     return Ok((x, y));
                 }
             }
@@ -118,5 +118,23 @@ mod tests {
         );
         assert!(result.is_err());
         assert_eq!(polls, 1, "poll must not be retried after an error");
+    }
+
+    #[test]
+    fn read_error_is_propagated_not_retried() {
+        let mut reads = 0;
+        let result = wait_for_position_response(
+            |_| Ok(true),
+            || {
+                reads += 1;
+                if reads == 1 {
+                    Err(Error::from(io::ErrorKind::UnexpectedEof))
+                } else {
+                    Ok(InternalEvent::CursorPosition(1, 1))
+                }
+            },
+        );
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        assert_eq!(reads, 1, "read must not be retried after an error");
     }
 }
